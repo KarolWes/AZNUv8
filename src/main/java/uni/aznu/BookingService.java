@@ -104,10 +104,10 @@ public class BookingService extends RouteBuilder {
                 .unmarshal().json(JsonLibrary.Jackson, BookProcessRequest.class)
                 .process(
                         (exchange) -> {
-                            String bookingProcessId = exchange.getMessage()
-                                    .getHeader("bookingProcessId", String.class);
+                            String bookingId = exchange.getMessage()
+                                    .getHeader("bookingId", String.class);
                             boolean isReady= paymentService.addBookProcessRequest(
-                                    bookingProcessId,
+                                    bookingId,
                                     exchange.getMessage().getBody(BookProcessRequest.class));
                             exchange.getMessage().setHeader("isReady", isReady);
                         })
@@ -144,10 +144,11 @@ public class BookingService extends RouteBuilder {
     }
 
     private void finalizePaymentLogic(Exchange exchange) {
-        String bookingProcessId = exchange.getMessage().
-                getHeader("bookingProcessId", String.class);
+        String bookingId = exchange.getMessage().
+                getHeader("bookingId", String.class);
+        System.out.println(bookingId);
         PaymentService.PaymentData paymentData =
-                paymentService.getPaymentData(bookingProcessId);
+                paymentService.getPaymentData(bookingId);
         BigDecimal equipmentCost=paymentData.equipmentBookingInfo.getCost();
         if(equipmentCost == null){
             equipmentCost = new BigDecimal(0);
@@ -158,19 +159,19 @@ public class BookingService extends RouteBuilder {
         }
         BigDecimal totalCost=equipmentCost.add(visitCost);
         ResultModel resultModel = new ResultModel();
-        resultModel.setId(bookingProcessId);
+        resultModel.setId(bookingId);
         resultModel.setMessage("Cost: " + totalCost);
         exchange.getMessage().setBody(resultModel);
     }
 
     private void paymentLogic(Exchange exchange, AtomicBoolean isCanceled) {
-        String bookingProcessId =
-                exchange.getMessage().getHeader("bookingProcessId", String.class);
-        isCanceled.set(visitStateService.getState(bookingProcessId).equals(ProcessingState.CANCELLED) ||
-                equipmentStateService.getState(bookingProcessId).equals(ProcessingState.CANCELLED));
+        String bookingId =
+                exchange.getMessage().getHeader("bookingId", String.class);
+        isCanceled.set(visitStateService.getState(bookingId).equals(ProcessingState.CANCELLED) ||
+                equipmentStateService.getState(bookingId).equals(ProcessingState.CANCELLED));
         if(!isCanceled.get()) {
             boolean isReady= paymentService.addBookingInfo(
-                    bookingProcessId,
+                    bookingId,
                     exchange.getMessage().getBody(BookingInfo.class),
                     exchange.getMessage().getHeader("serviceType", String.class));
             exchange.getMessage().setHeader("isReady", isReady);
@@ -355,7 +356,7 @@ public class BookingService extends RouteBuilder {
                 .to("direct:BookingResult");
 
         from("direct:BookingResult").routeId("BookingResult")
-                .log("Booking result request for id: ${header.id}");
+                .log("Booking result request for id: ${header.bookingId}");
 
 //        from("kafka:BookingFailTopic?brokers=" + kafkaServer + "&groupId=" + bookingServiceType ).routeId("GatewayErrorHandler")
 //                .unmarshal().json(ErrorInfo.class)

@@ -24,7 +24,7 @@ public class BookingController {
     @PostMapping("/booking")
     public String returnSite(BookProcessRequest request, Model model){
         String id = restTemplate.postForObject("http://gateway:8090/api/process/booking", request, String.class);
-        model.addAttribute("id", id);
+        model.addAttribute("bookingId", id);
         return "result";
     }
 }
