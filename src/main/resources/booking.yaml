@@ -1,0 +1,118 @@
+openapi: 3.0.1
+info:
+  title: Booking micro service
+  description: Micro service to book a traveling equipment
+  contact:
+    email: supportm@bp.org
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.0
+servers:
+  - url: http://localhost:8090
+tags:
+  - name: equipment
+    description: Equipment which you can book
+paths:
+  /process:
+    post:
+      tags:
+        - process
+      summary: Booking of an equipment process
+      operationId: bookProcess
+      requestBody:
+        description: Details of equipment which you are booking
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookProcessRequest'
+        required: true
+      responses:
+        400:
+          description: Problem during processing of the booking
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExceptionResponse'
+
+components:
+  schemas:
+    Person:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+    Equipment:
+      type: object
+      properties:
+        name:
+          type: string
+        eType:
+          type: string
+        dateFrom:
+          type: string
+          format: date-time
+        dateTo:
+          type: string
+          format: date-time
+        state:
+          type: string
+    BookingInfo:
+      type: object
+      properties:
+        id:
+          type: string
+        cost:
+          type: number
+    Visit:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date-time
+        vType:
+          type: string
+    PaymentCard:
+      type: object
+      properties:
+        name:
+          type: string
+        validTo:
+          type: string
+        number:
+          type: string
+    BookEquipmentRequest:
+      type: object
+      properties:
+        person:
+          $ref: '#/components/schemas/Person'
+        equipment:
+          $ref: '#/components/schemas/Equipment'
+    BookVisitRequest:
+      type: object
+      properties:
+        person:
+          $ref: '#/components/schemas/Person'
+        visit:
+          $ref: '#/components/schemas/Visit'
+    BookProcessRequest:
+      type: object
+      properties:
+        person:
+          $ref: '#/components/schemas/Person'
+        equipment:
+          $ref: '#/components/schemas/Equipment'
+        visit:
+          $ref: '#/components/schemas/Visit'
+        paymentCard:
+          $ref: '#/components/schemas/PaymentCard'
+    ExceptionResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        message:
+          type: string
