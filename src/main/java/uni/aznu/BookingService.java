@@ -118,6 +118,7 @@ public class BookingService extends RouteBuilder {
         from("direct:finalizePayment").routeId("finalizePayment")
                 .log("fired finalizePayment")
                 .process(this::finalizePaymentLogic)
+                .to("kafka:BookingResultTopic?brokers=" + kafkaServer + "&groupId=" + bookingServiceType )
                 .to("direct:notification");
 
         from("direct:notification").routeId("notification")
@@ -156,10 +157,10 @@ public class BookingService extends RouteBuilder {
             visitCost = new BigDecimal(0);
         }
         BigDecimal totalCost=equipmentCost.add(visitCost);
-        BookingInfo bookingInfo = new BookingInfo();
-        bookingInfo.setId(bookingIdentifierService.getBookingIdentifier());
-        bookingInfo.setCost(totalCost);
-        exchange.getMessage().setBody(bookingInfo);
+        ResultModel resultModel = new ResultModel();
+        resultModel.setId(bookingProcessId);
+        resultModel.setMessage("Cost: " + totalCost);
+        exchange.getMessage().setBody(resultModel);
     }
 
     private void paymentLogic(Exchange exchange, AtomicBoolean isCanceled) {
@@ -217,7 +218,7 @@ public class BookingService extends RouteBuilder {
                 visitStateService.sendEvent(bookingId, ProcessingEvent.START);
         if (previousState!=ProcessingState.CANCELLED) {
             BookingInfo bookingInfo = new BookingInfo();
-            bookingInfo.setId(bookingIdentifierService.getBookingIdentifier());
+            bookingInfo.setId(bookingId);
             BookProcessRequest request = exchange.getMessage().getBody(BookProcessRequest.class);
             //some logic should come here
             exchange.getMessage().setBody(bookingInfo);
@@ -265,7 +266,7 @@ public class BookingService extends RouteBuilder {
                 equipmentStateService.sendEvent(bookingId, ProcessingEvent.START);
         if (previousState!=ProcessingState.CANCELLED){
             BookingInfo bookingInfo = new BookingInfo();
-            bookingInfo.setId(bookingIdentifierService.getBookingIdentifier());
+            bookingInfo.setId(bookingId);
             BookProcessRequest request = exchange.getMessage().getBody(BookProcessRequest.class);
             if (request != null && request.getEquipment() != null
                     && request.getEquipment().getEType() != null) {
@@ -310,14 +311,14 @@ public class BookingService extends RouteBuilder {
                 .consumes("application/json")
                 .produces("application/json")
                 .post("/booking").description("Book an equipment")
-                .type(BookProcessRequest.class).outType(BookingInfo.class)
+                .type(BookProcessRequest.class).outType(ResultModel.class)
                 .param().name("body").type(body).description("The equipment to book").endParam()
                 .responseMessage().code(200).message("Equipment successfully booked").endResponseMessage()
                 .to("direct:bookProcess");
 
         rest("/process").description("Equipment booking result")
                 .produces("application/json")
-                .get("/result/{id}").description("Get equipment booking result").outType(BookingInfo.class)
+                .get("/result").description("Get equipment booking result").outType(ResultModel.class)
                 .responseMessage().code(200).message("Equipment booking result").endResponseMessage()
                 .to("direct:BookingResult");
     }
@@ -349,15 +350,12 @@ public class BookingService extends RouteBuilder {
                 .marshal().json()
                 .to("kafka:ProcessReqTopic?brokers=" + kafkaServer + "&groupId=" + bookingServiceType );
 
+        from("kafka:BookingResultTopic?brokers=" + kafkaServer + "&groupId=" + bookingServiceType)
+                .routeId("BookingResultKafka")
+                .to("direct:BookingResult");
+
         from("direct:BookingResult").routeId("BookingResult")
-                .log("Booking result request for id: ${header.id}")
-                .process(exchange -> {
-                    String id = exchange.getMessage().getHeader("id", String.class);
-                    ResultModel res = new ResultModel();
-                    res.setId(id);
-                    res.setMessage(exchange.getMessage().getBody(String.class));
-                    exchange.getMessage().setBody(res);
-                });
+                .log("Booking result request for id: ${header.id}");
 
 //        from("kafka:BookingFailTopic?brokers=" + kafkaServer + "&groupId=" + bookingServiceType ).routeId("GatewayErrorHandler")
 //                .unmarshal().json(ErrorInfo.class)

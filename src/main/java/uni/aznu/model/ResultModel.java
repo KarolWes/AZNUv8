@@ -1,8 +1,12 @@
 package uni.aznu.model;
 
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class ResultModel {
+    @JsonProperty("id")
     String Id;
+    @JsonProperty("message")
     String Message;
 
     public ResultModel() {
@@ -22,5 +26,13 @@ public class ResultModel {
 
     public void setMessage(String message) {
         Message = message;
+    }
+
+    @Override
+    public String toString() {
+        return "ResultModel{" +
+                "Id='" + Id + '\'' +
+                ", Message='" + Message + '\'' +
+                '}';
     }
 }
