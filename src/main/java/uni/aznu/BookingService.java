@@ -114,8 +114,16 @@ public class BookingService extends RouteBuilder {
                             exchange.getMessage().setHeader("isReady", isReady);
                         })
                 .choice()
+                .when(header("previousState").isEqualTo(ProcessingState.CANCELLED))
+                .to("direct:paymentCompensationAction")
+                .otherwise()
+                .choice()
                 .when(header("isReady").isEqualTo(true)).to("direct:finalizePayment")
-                .endChoice();
+                .endChoice().endChoice();
+
+        from("direct:paymentCompensationAction").routeId("paymentCompensationAction")
+                .log("fired paymentCompensationAction")
+                .to("stream:out");
 
         from("direct:finalizePayment").routeId("finalizePayment")
                 .log("fired finalizePayment")
