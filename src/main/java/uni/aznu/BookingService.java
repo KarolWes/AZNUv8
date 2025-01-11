@@ -326,19 +326,18 @@ public class BookingService extends RouteBuilder {
         rest("/bookingResult").get("/{id}")
                 .route().routeId("RenderHtml")
                 .process(exchange -> {
-                    // Extract booking ID from the path
                     String bookingId = exchange.getIn().getHeader("id", String.class);
-
-                    // Fetch the result from in-memory storage
                     ResultModel result = InMemoryStorage.getResult(bookingId);
+                    String message;
+                    boolean refresh = false;
                     if (result == null) {
-                        exchange.getMessage().setBody("Result not found for ID: " + bookingId);
-                        exchange.getMessage().setHeader(Exchange.HTTP_RESPONSE_CODE, 404);
-                        return;
+                        message = "Result not yet available. Please refresh.";
+                        refresh = true;
                     }
-
-                    // Generate the HTML response
-                    String htmlResponse = generateHtmlResponse(result);
+                    else{
+                        message = result.getMessage();
+                    }
+                    String htmlResponse = generateHtmlResponse(bookingId, message, refresh);
                     exchange.getMessage().setBody(htmlResponse);
                     exchange.getMessage().setHeader(Exchange.CONTENT_TYPE, "text/html");
                 });
@@ -400,16 +399,24 @@ public class BookingService extends RouteBuilder {
 
     }
 
-    private String generateHtmlResponse(ResultModel result) {
-        return "<html>" +
+    private String generateHtmlResponse(String id, String message, boolean refresh) {
+        String html;
+        html = "<html>" +
                 "<head><title>Booking Result</title></head>" +
                 "<body>" +
                 "<h1>Booking Result</h1>" +
-                "<p><strong>ID:</strong> " + result.getId() + "</p>" +
-                "<p><strong>Message:</strong> " + result.getMessage() + "</p>" +
-                "<a href=\"/booking\">Book again</a>"+
-                "</body>" +
+                "<p><strong>ID:</strong> " + id + "</p>" +
+                "<p><strong>Message:</strong> " + message + "</p>";
+        if(refresh){
+            html += "<a href=\"/api/bookingResult/"+id+"\">Refresh</a>";
+        }
+        else{
+            html += "<a href=\"/booking\">Book again</a>";
+        }
+        html += "</body>" +
                 "</html>";
+        return html;
+
     }
 
 }
