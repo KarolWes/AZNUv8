@@ -57,8 +57,7 @@ public class BookingService extends RouteBuilder {
 
     private void bookVisitExceptionHandlers() {
         onException(VisitException.class)
-                .process(BookingService::exceptionLogic
-                )
+                .process(BookingService::exceptionLogic)
                 .marshal().json()
                 .to("stream:out")
                 .setHeader("serviceType", constant("visit"))
@@ -69,9 +68,12 @@ public class BookingService extends RouteBuilder {
     private static void exceptionLogic(Exchange exchange) {
         ExceptionResponse er = new ExceptionResponse();
         er.setTimestamp(OffsetDateTime.now());
-        Exception cause =
-                exchange.getProperty(Exchange.EXCEPTION_CAUGHT, Exception.class);
+        Exception cause = exchange.getProperty(Exchange.EXCEPTION_CAUGHT, Exception.class);
         er.setMessage(cause.getMessage());
+
+        // Extract bookingId from the message header
+        String bookingId = exchange.getMessage().getHeader("bookingId", String.class);
+        er.setBookingId(bookingId);
         exchange.getMessage().setBody(er);
     }
 
@@ -146,7 +148,6 @@ public class BookingService extends RouteBuilder {
     private void finalizePaymentLogic(Exchange exchange) {
         String bookingId = exchange.getMessage().
                 getHeader("bookingId", String.class);
-        System.out.println(bookingId);
         PaymentService.PaymentData paymentData =
                 paymentService.getPaymentData(bookingId);
         BigDecimal equipmentCost=paymentData.equipmentBookingInfo.getCost();
@@ -239,7 +240,7 @@ public class BookingService extends RouteBuilder {
                 .to("stream:out")
                 .choice()
                     .when(header("previousState").isEqualTo(ProcessingState.CANCELLED))
-                    .to("direct:bookFlightCompensationAction")
+                    .to("direct:bookEquipmentCompensationAction")
                 .otherwise()
                     .setHeader("serviceType", constant("equipment"))
                     .to("kafka:BookingInfoTopic?brokers=" + kafkaServer + "&groupId=" + bookingServiceType )
@@ -341,6 +342,16 @@ public class BookingService extends RouteBuilder {
                     exchange.getMessage().setBody(htmlResponse);
                     exchange.getMessage().setHeader(Exchange.CONTENT_TYPE, "text/html");
                 });
+
+        rest("/error")
+                .get()
+                .produces("text/html")
+                .route().routeId("error")
+                .process(exchange -> {
+                    String htmlResponse = generateHtmlError("random");
+                    exchange.getMessage().setBody(htmlResponse);
+                    exchange.getMessage().setHeader("Content-Type", "text/html");
+                });
     }
 
     private void gateway() {
@@ -375,6 +386,18 @@ public class BookingService extends RouteBuilder {
                 .log("Booking result request for id: ${header.bookingId}")
                 .to("direct:Storage");
 
+        from("kafka:BookingFailTopic?brokers=" + kafkaServer)
+                .routeId("BookingFailKafkaGateway")
+                .log("Error on booking")
+                .process(exchange -> {
+                    String rawMessage = exchange.getIn().getBody(String.class);
+                    rawMessage = rawMessage.substring(1, rawMessage.length()-1);
+                    String[] fields = rawMessage.split("\"");
+                    String result = "{"+fields[3]+"|"+fields[7]+ " " + fields[11] + "}";
+                    exchange.getMessage().setBody(result);
+                })
+                .to("direct:Storage");
+
         from("direct:Storage")
                 .routeId("store")
                 .process(exchange -> {
@@ -386,17 +409,6 @@ public class BookingService extends RouteBuilder {
                     result.setMessage(fields[1]);
                     InMemoryStorage.addResult(result);
                 });
-
-
-//        from("kafka:BookingFailTopic?brokers=" + kafkaServer + "&groupId=" + bookingServiceType ).routeId("GatewayErrorHandler")
-//                .unmarshal().json(ErrorInfo.class)
-//                .process(exchange -> {
-//                    String id = exchange.getMessage().getHeader("Id", String.class);
-//                    ErrorInfo errorInfo = exchange.getMessage().getBody(ErrorInfo.class);
-//                    ticketRequestStatus.put(id, new TicketStatus(TicketStatus.Status.Error, errorInfo));
-//                });
-
-
     }
 
     private String generateHtmlResponse(String id, String message, boolean refresh) {
@@ -417,6 +429,19 @@ public class BookingService extends RouteBuilder {
                 "</html>";
         return html;
 
+    }
+
+    private static String generateHtmlError(String message){
+        String html;
+        html = "<html>" +
+                "<head><title>Booking Error</title></head>" +
+                "<body>" +
+                "<h1>Booking Error</h1>" +
+                "<p><strong>Message:</strong> " + message + "</p>"+
+                "<a href=\"/booking\">Book again</a>";
+        html += "</body>" +
+                "</html>";
+        return html;
     }
 
 }

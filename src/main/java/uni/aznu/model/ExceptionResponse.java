@@ -24,6 +24,9 @@ import java.util.Objects;
 
 @Generated(value = "io.swagger.codegen.v3.generators.java.JavaClientCodegen", date = "2024-12-13T14:13:08.323+01:00[Europe/Belgrade]")
 public class ExceptionResponse {
+  @JsonProperty("bookingId")
+  private String bookingId = null;
+
   @JsonProperty("timestamp")
   private OffsetDateTime timestamp = null;
 
@@ -66,6 +69,15 @@ public class ExceptionResponse {
     this.message = message;
   }
 
+  public ExceptionResponse bookingId(String bookingId) {this.bookingId = bookingId; return this;}
+
+  public String getBookingId() {
+    return bookingId;
+  }
+
+  public void setBookingId(String bookingId) {
+    this.bookingId = bookingId;
+  }
 
   @Override
   public boolean equals(Object o) {
@@ -77,12 +89,12 @@ public class ExceptionResponse {
     }
     ExceptionResponse exceptionResponse = (ExceptionResponse) o;
     return Objects.equals(this.timestamp, exceptionResponse.timestamp) &&
-        Objects.equals(this.message, exceptionResponse.message);
+        Objects.equals(this.message, exceptionResponse.message) && Objects.equals(this.bookingId, exceptionResponse.bookingId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(timestamp, message);
+    return Objects.hash(timestamp, message, bookingId);
   }
 
 
@@ -93,6 +105,7 @@ public class ExceptionResponse {
     
     sb.append("    timestamp: ").append(toIndentedString(timestamp)).append("\n");
     sb.append("    message: ").append(toIndentedString(message)).append("\n");
+    sb.append("    bookingId: ").append(toIndentedString(bookingId)).append("\n");
     sb.append("}");
     return sb.toString();
   }

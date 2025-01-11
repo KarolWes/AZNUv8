@@ -8,12 +8,16 @@ public class InMemoryStorage {
 
     public static void addResult(ResultModel result) {
         if(result != null && result.getId() != null) {
-            storage.put(result.getId(), result);
+            if(!storage.containsKey(result.getId())) {
+                storage.put(result.getId(), result);
+            }
         }
     }
 
     public static ResultModel getResult(String id) {
-        if(id != null && storage.containsKey(id)) {return storage.get(id);}
+        if(id != null && storage.containsKey(id)) {
+            return storage.get(id);
+        }
         else return null;
 
     }
