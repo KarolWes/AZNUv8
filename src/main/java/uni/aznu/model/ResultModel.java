@@ -30,9 +30,6 @@ public class ResultModel {
 
     @Override
     public String toString() {
-        return "ResultModel{" +
-                "Id='" + Id + '\'' +
-                ", Message='" + Message + '\'' +
-                '}';
+        return "{" +  Id + "|"+ Message + "}";
     }
 }

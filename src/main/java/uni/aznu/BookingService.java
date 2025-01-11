@@ -322,6 +322,26 @@ public class BookingService extends RouteBuilder {
                 .get("/result").description("Get equipment booking result").outType(ResultModel.class)
                 .responseMessage().code(200).message("Equipment booking result").endResponseMessage()
                 .to("direct:BookingResult");
+
+        rest("/bookingResult").get("/{id}")
+                .route().routeId("RenderHtml")
+                .process(exchange -> {
+                    // Extract booking ID from the path
+                    String bookingId = exchange.getIn().getHeader("id", String.class);
+
+                    // Fetch the result from in-memory storage
+                    ResultModel result = InMemoryStorage.getResult(bookingId);
+                    if (result == null) {
+                        exchange.getMessage().setBody("Result not found for ID: " + bookingId);
+                        exchange.getMessage().setHeader(Exchange.HTTP_RESPONSE_CODE, 404);
+                        return;
+                    }
+
+                    // Generate the HTML response
+                    String htmlResponse = generateHtmlResponse(result);
+                    exchange.getMessage().setBody(htmlResponse);
+                    exchange.getMessage().setHeader(Exchange.CONTENT_TYPE, "text/html");
+                });
     }
 
     private void gateway() {
@@ -353,10 +373,21 @@ public class BookingService extends RouteBuilder {
 
         from("kafka:BookingResultTopic?brokers=" + kafkaServer + "&groupId=" + bookingServiceType)
                 .routeId("BookingResultKafka")
-                .to("direct:BookingResult");
+                .log("Booking result request for id: ${header.bookingId}")
+                .to("direct:Storage");
 
-        from("direct:BookingResult").routeId("BookingResult")
-                .log("Booking result request for id: ${header.bookingId}");
+        from("direct:Storage")
+                .routeId("store")
+                .process(exchange -> {
+                    String rawMessage = exchange.getIn().getBody(String.class);
+                    rawMessage = rawMessage.substring(1, rawMessage.length()-1);
+                    ResultModel result = new ResultModel();
+                    String[] fields = rawMessage.split("[|]");
+                    result.setId(fields[0]);
+                    result.setMessage(fields[1]);
+                    InMemoryStorage.addResult(result);
+                });
+
 
 //        from("kafka:BookingFailTopic?brokers=" + kafkaServer + "&groupId=" + bookingServiceType ).routeId("GatewayErrorHandler")
 //                .unmarshal().json(ErrorInfo.class)
@@ -368,4 +399,17 @@ public class BookingService extends RouteBuilder {
 
 
     }
+
+    private String generateHtmlResponse(ResultModel result) {
+        return "<html>" +
+                "<head><title>Booking Result</title></head>" +
+                "<body>" +
+                "<h1>Booking Result</h1>" +
+                "<p><strong>ID:</strong> " + result.getId() + "</p>" +
+                "<p><strong>Message:</strong> " + result.getMessage() + "</p>" +
+                "<a href=\"/booking\">Book again</a>"+
+                "</body>" +
+                "</html>";
+    }
+
 }
