@@ -1,7 +1,7 @@
 
 package uni.aznu.soapserver;
 
-import javax.xml.bind.annotation.*;
+import jakarta.xml.bind.annotation.*;
 
 
 /**
