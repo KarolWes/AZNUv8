@@ -1,0 +1,63 @@
+<definitions xmlns="http://schemas.xmlsoap.org/wsdl/"
+             xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+             xmlns:tns="http://example.com/visit"
+             xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+             targetNamespace="http://example.com/visit"
+             name="VisitBookingService">
+
+    <types>
+        <xsd:schema targetNamespace="http://example.com/visit">
+            <xsd:element name="BookVisitRequest">
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element name="bookingId" type="xsd:string" />
+                        <xsd:element name="requestData" type="xsd:string" />
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+
+            <xsd:element name="BookVisitResponse">
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element name="status" type="xsd:string" />
+                        <xsd:element name="message" type="xsd:string" />
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+        </xsd:schema>
+    </types>
+
+    <message name="BookVisitRequestMessage">
+        <part name="parameters" element="tns:BookVisitRequest" />
+    </message>
+
+    <message name="BookVisitResponseMessage">
+        <part name="parameters" element="tns:BookVisitResponse" />
+    </message>
+
+    <portType name="VisitBookingPortType">
+        <operation name="BookVisit">
+            <input message="tns:BookVisitRequestMessage" />
+            <output message="tns:BookVisitResponseMessage" />
+        </operation>
+    </portType>
+
+    <binding name="VisitBookingSoapBinding" type="tns:VisitBookingPortType">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http" />
+        <operation name="BookVisit">
+            <soap:operation soapAction="http://example.com/visit/BookVisit" />
+            <input>
+                <soap:body use="literal" />
+            </input>
+            <output>
+                <soap:body use="literal" />
+            </output>
+        </operation>
+    </binding>
+
+    <service name="VisitBookingService">
+        <port name="VisitBookingSoapPort" binding="tns:VisitBookingSoapBinding">
+            <soap:address location="http://localhost:8080/VisitBookingService" />
+        </port>
+    </service>
+</definitions>
