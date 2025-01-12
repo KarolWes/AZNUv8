@@ -15,6 +15,9 @@ import uni.aznu.model.*;
 import uni.aznu.state.ProcessingEvent;
 import uni.aznu.state.ProcessingState;
 import uni.aznu.state.StateService;
+import uni.aznu.visit.BookVisitRequest;
+import uni.aznu.visit.BookVisitResponse;
+import uni.aznu.visit.VisitService;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -23,7 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static org.apache.camel.model.rest.RestParamType.body;
 
 @Component
-public class BookingService extends RouteBuilder {
+public class    BookingService extends RouteBuilder {
     @Autowired
     BookingIdentifierService bookingIdentifierService;
     @Autowired
@@ -32,6 +35,8 @@ public class BookingService extends RouteBuilder {
     StateService equipmentStateService;
     @Autowired
     StateService visitStateService;
+    @Autowired
+    VisitService visitService;
 
     @Value("${kafka.server}")
     private String kafkaServer;
@@ -224,17 +229,13 @@ public class BookingService extends RouteBuilder {
     private void visitLogic(Exchange exchange) {
         String bookingId =
                 exchange.getMessage().getHeader("bookingId", String.class);
+        BookVisitRequest request = new BookVisitRequest();
+        request.setBookingId(bookingId);
+        request.setRequestData(exchange.getMessage().getBody(String.class));
+        BookVisitResponse response = visitService.bookVisit(request);
+
         ProcessingState previousState =
                 visitStateService.sendEvent(bookingId, ProcessingEvent.START);
-        if (previousState!=ProcessingState.CANCELLED) {
-            BookingInfo bookingInfo = new BookingInfo();
-            bookingInfo.setId(bookingId);
-            BookProcessRequest request = exchange.getMessage().getBody(BookProcessRequest.class);
-            //some logic should come here
-            exchange.getMessage().setBody(bookingInfo);
-                previousState = visitStateService.sendEvent(bookingId,
-                        ProcessingEvent.FINISH);
-        }
         exchange.getMessage().setHeader("previousState", previousState);
     }
 

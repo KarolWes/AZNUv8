@@ -1,12 +1,12 @@
 <definitions xmlns="http://schemas.xmlsoap.org/wsdl/"
              xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
-             xmlns:tns="http://example.com/visit"
+             xmlns:tns="http://visit.aznu.uni"
              xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-             targetNamespace="http://example.com/visit"
+             targetNamespace="http://visit.aznu.uni"
              name="VisitBookingService">
 
     <types>
-        <xsd:schema targetNamespace="http://example.com/visit">
+        <xsd:schema targetNamespace="http://visit.aznu.uni">
             <xsd:element name="BookVisitRequest">
                 <xsd:complexType>
                     <xsd:sequence>
@@ -45,7 +45,7 @@
     <binding name="VisitBookingSoapBinding" type="tns:VisitBookingPortType">
         <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http" />
         <operation name="BookVisit">
-            <soap:operation soapAction="http://example.com/visit/BookVisit" />
+            <soap:operation soapAction="" />
             <input>
                 <soap:body use="literal" />
             </input>
@@ -57,7 +57,7 @@
 
     <service name="VisitBookingService">
         <port name="VisitBookingSoapPort" binding="tns:VisitBookingSoapBinding">
-            <soap:address location="http://localhost:8080/VisitBookingService" />
+            <soap:address location="http://host.docker.internal:8082/soap-api/visit" />
         </port>
     </service>
 </definitions>
