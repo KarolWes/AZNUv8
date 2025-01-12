@@ -1,20 +1,19 @@
 package uni.aznu.visit;
 
-
-import jakarta.jws.WebMethod;
-import jakarta.jws.WebParam;
-import jakarta.jws.WebService;
-import jakarta.jws.soap.SOAPBinding;
+import javax.jws.WebMethod;
+import javax.jws.WebParam;
+import javax.jws.WebService;
+import javax.jws.soap.SOAPBinding;
 
 @WebService(targetNamespace = "http://example.com/visit", name = "VisitBookingPortType")
 @SOAPBinding(style = SOAPBinding.Style.DOCUMENT)
 public class VisitService {
 
     @WebMethod(operationName = "BookVisit")
-    public BookVisitResponse bookVisit(
-            @WebParam(name = "BookVisitRequest") BookVisitRequest request) {
+    public uni.aznu.visit.BookVisitResponse bookVisit(
+            @WebParam(name = "BookVisitRequest") uni.aznu.visit.BookVisitRequest request) {
 
-        BookVisitResponse response = new BookVisitResponse();
+        uni.aznu.visit.BookVisitResponse response = new uni.aznu.visit.BookVisitResponse();
         String bookingId = request.getBookingId();
 
         ProcessingState previousState = visitStateService.sendEvent(bookingId, ProcessingEvent.START);
@@ -39,50 +38,6 @@ public class VisitService {
     // Example state service (mock implementation for demonstration)
     private final VisitStateService visitStateService = new VisitStateService();
 
-    // Supporting classes and enums
-    public static class BookVisitRequest {
-        private String bookingId;
-        private String requestData;
-
-        public String getBookingId() {
-            return bookingId;
-        }
-
-        public void setBookingId(String bookingId) {
-            this.bookingId = bookingId;
-        }
-
-        public String getRequestData() {
-            return requestData;
-        }
-
-        public void setRequestData(String requestData) {
-            this.requestData = requestData;
-        }
-
-    }
-
-    public static class BookVisitResponse {
-        private String status;
-        private String message;
-
-        public String getStatus() {
-            return status;
-        }
-
-        public void setStatus(String status) {
-            this.status = status;
-        }
-
-        public String getMessage() {
-            return message;
-        }
-
-        public void setMessage(String message) {
-            this.message = message;
-        }
-
-    }
 
     public static class VisitStateService {
         public ProcessingState sendEvent(String bookingId, ProcessingEvent event) {
