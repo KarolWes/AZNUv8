@@ -35,6 +35,7 @@ services:
       BOOKING_SERVICE_TYPE: visit
     depends_on:
       - kafka
+      - soap
   equipment:
     image: aznu/booking
     environment:
@@ -49,3 +50,7 @@ services:
       BOOKING_SERVICE_TYPE: payment
     depends_on:
       - kafka
+
+
+  soap:
+    image: aznu/soap-server

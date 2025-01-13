@@ -1,10 +1,13 @@
 package uni.aznu.visit;
 
+import org.springframework.stereotype.Service;
+
 import javax.jws.WebMethod;
 import javax.jws.WebParam;
 import javax.jws.WebService;
 import javax.jws.soap.SOAPBinding;
 
+@Service
 @WebService(targetNamespace = "http://example.com/visit", name = "VisitBookingPortType")
 @SOAPBinding(style = SOAPBinding.Style.DOCUMENT)
 public class VisitService {
