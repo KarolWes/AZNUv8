@@ -1,4 +1,4 @@
-package uni.aznu.web;
+package uni.aznu;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.ui.Model;

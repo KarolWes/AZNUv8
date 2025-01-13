@@ -190,59 +190,52 @@ public class BookingService extends RouteBuilder {
     }
 
     private void visit() {
+        from("kafka:ProcessReqTopic?brokers=" + kafkaServer + "&groupId=" + bookingServiceType )
+                .routeId("bookVisit")
+                .log("fired bookVisit")
+                .unmarshal().json(JsonLibrary.Jackson, BookProcessRequest.class)
+                .process(this::visitLogic)
+                .marshal().json()
+                .to("stream:out")
+                .choice()
+                .when(header("previousState").isEqualTo(ProcessingState.CANCELLED))
+                .to("direct:bookVisitCompensationAction")
+                .otherwise()
+                .setHeader("serviceType", constant("visit"))
+                .to("kafka:BookingInfoTopic?brokers=" + kafkaServer + "&groupId=" + bookingServiceType )
+                .endChoice();
 
-        from("cxf://http://localhost:8090/soap/BookingService"
-                + "?serviceClass=uni.aznu.soap.BookingServicePortType"
-                + "&wsdlURL=/visit/BookingService.wsdl")
-                .routeId("soapBookingService")
-                .log("SOAP request received: ${body}")
-                .process(this::handleSoapRequest)
-                .to("direct:processSoapResponse");
+        from("kafka:BookingFailTopic?brokers=" + kafkaServer + "&groupId=" + bookingServiceType ).routeId("bookVisitCompensation")
+                        .log("fired bookVisitCompensation")
+                        .unmarshal().json(JsonLibrary.Jackson, ExceptionResponse.class)
+                        .choice().when(header("serviceType").isNotEqualTo("visit"))
+                            .process((exchange) -> compensationLogic(exchange, visitStateService))
+                            .choice().when(header("previousState").isEqualTo(ProcessingState.FINISHED))
+                                .to("direct:bookVisitCompensationAction")
+                            .endChoice()
+                        .endChoice();
 
-        from("direct:processSoapResponse")
-                .process(exchange -> {
-                    // Construct SOAP response logic here
-                    String bookingId = exchange.getIn().getHeader("bookingId", String.class);
-                    exchange.getMessage().setBody("Booking response for ID: " + bookingId);
-                });
+        from("direct:bookVisitCompensationAction").routeId("bookVisitCompensationAction")
+                .log("fired bookVisitCompensationAction")
+                .to("stream:out");
 
-        from("direct:invokeSoapService")
-                .setHeader(CxfConstants.OPERATION_NAME, constant("BookEquipment"))
-                .setHeader(CxfConstants.OPERATION_NAMESPACE, constant("http://aznu.uni/"))
-                .to("cxf://http://external-soap-service-endpoint"
-                        + "?serviceClass=uni.aznu.soap.BookingServicePortType"
-                        + "&wsdlURL=/path-to/BookingService.wsdl")
-                .log("SOAP response received: ${body}");
+    }
 
-//        from("kafka:ProcessReqTopic?brokers=" + kafkaServer + "&groupId=" + bookingServiceType )
-//                .routeId("bookVisit")
-//                .log("fired bookVisit")
-//                .unmarshal().json(JsonLibrary.Jackson, BookProcessRequest.class)
-//                .process(this::visitLogic)
-//                .marshal().json()
-//                .to("stream:out")
-//                .choice()
-//                .when(header("previousState").isEqualTo(ProcessingState.CANCELLED))
-//                .to("direct:bookVisitCompensationAction")
-//                .otherwise()
-//                .setHeader("serviceType", constant("visit"))
-//                .to("kafka:BookingInfoTopic?brokers=" + kafkaServer + "&groupId=" + bookingServiceType )
-//                .endChoice();
-//
-//        from("kafka:BookingFailTopic?brokers=" + kafkaServer + "&groupId=" + bookingServiceType ).routeId("bookVisitCompensation")
-//                        .log("fired bookVisitCompensation")
-//                        .unmarshal().json(JsonLibrary.Jackson, ExceptionResponse.class)
-//                        .choice().when(header("serviceType").isNotEqualTo("visit"))
-//                            .process((exchange) -> compensationLogic(exchange, visitStateService))
-//                            .choice().when(header("previousState").isEqualTo(ProcessingState.FINISHED))
-//                                .to("direct:bookVisitCompensationAction")
-//                            .endChoice()
-//                        .endChoice();
-//
-//        from("direct:bookVisitCompensationAction").routeId("bookVisitCompensationAction")
-//                .log("fired bookVisitCompensationAction")
-//                .to("stream:out");
-
+    private void visitLogic(Exchange exchange) {
+        String bookingId =
+                exchange.getMessage().getHeader("bookingId", String.class);
+        ProcessingState previousState =
+                visitStateService.sendEvent(bookingId, ProcessingEvent.START);
+        if (previousState!=ProcessingState.CANCELLED) {
+            BookingInfo bookingInfo = new BookingInfo();
+            bookingInfo.setId(bookingId);
+            BookProcessRequest request = exchange.getMessage().getBody(BookProcessRequest.class);
+            //some logic should come here
+            exchange.getMessage().setBody(bookingInfo);
+                previousState = visitStateService.sendEvent(bookingId,
+                        ProcessingEvent.FINISH);
+        }
+        exchange.getMessage().setHeader("previousState", previousState);
     }
 
     private void equipment() {
